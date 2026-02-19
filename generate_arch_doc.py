@@ -287,8 +287,8 @@ def main():
            "nodes, ensuring every node meets a codified certification standard before serving production tenants.")
 
     P(doc, "The platform operates across four pillars, phased for execution:")
-    B(doc, " Establish a 99.5% availability SLA squad with runbooks, observability, RMA workflows, vendor SLA "
-           "tracking, and automated executive dashboards. Integrate Incident 5337 learnings. Already operational.", bold_prefix="Phase 1 — Healthy Fleet Maintenance:")
+    B(doc, " Establish 99.5% availability SLA with a dedicated L1 reliability squad & process — runbooks, daily triage, "
+           "RMA & vendor SLA tracking, executive dashboards & reporting. Incident 5337 learnings integrated. Already operational.", bold_prefix="Phase 1 — Healthy Fleet Maintenance:")
     B(doc, " Automate node lifecycle using NPD + controllers for detection and enforcement. Merge certification "
            "pipeline (BCM burn-in, DCGM L4, NCCL, HPL) into the lifecycle state machine.", bold_prefix="Phase 2 — Automated Node Lifecycle & Certification:")
     B(doc, " Deprecate BCM image cloning. Build Packer-based image pipeline with GitOps CD, cross-AZ replication, "
@@ -418,9 +418,6 @@ def main():
     B(doc, "Other teams (Storage, K8s) cannot self-serve their layer configuration into the base image")
     B(doc, "Re-imaging after tenant transitions requires manual intervention")
 
-    D(doc, os.path.join(DIAGRAMS_DIR, "07_image_pipeline.png"),
-        "Figure 5: Automated Image Pipeline — Packer-Based GitOps Model", width=Inches(6.5))
-
     H(doc, "4.2 Target Architecture", 2)
     T(doc, ["Component", "Details"],
         [
@@ -452,26 +449,27 @@ def main():
     # 5. PILLAR 4 — TENANT REASSIGNMENT
     # =====================================================================
     H(doc, "5. Pillar 4 — Tenant Reassignment", 1)
-    P(doc, "Every node movement between tenants follows a fixed, secure state transition. There are no spare "
-           "buffer nodes — all nodes are assigned to Internal Tenant A for continuous certification testing when "
-           "not serving production tenants.")
+    P(doc, "Every node movement between tenants follows a fixed, mandatory state transition pipeline. There are no spare "
+           "buffer nodes — all idle nodes live in Internal Tenant A for continuous certification testing. "
+           "There is NO direct path from Internal Tenant A to Production Tenant X. Every assignment traverses "
+           "the full un-assign → disk wipe → reimage → re-certify → assign pipeline.")
 
     H(doc, "5.1 Reassignment Lifecycle", 2)
     D(doc, os.path.join(DIAGRAMS_DIR, "05_buffer_strategy.png"),
-        "Figure 4: Internal Tenant Certification & Fleet Lifecycle Model", width=Inches(6.0))
+        "Figure 4: Internal Tenant Certification & Fleet Lifecycle Model (Mandatory 5-Step Pipeline)", width=Inches(6.0))
 
-    P(doc, "The fixed transition is: Tenant X → detach → reimage + disk wipe → Internal Tenant A (certification) → "
-           "Certified → Tenant Y. No shortcuts are permitted. This ensures complete tenant isolation and fresh certification.")
+    P(doc, "The mandatory transition is: Internal Tenant A → Certified → Un-assign → Disk Wipe & Reimage → "
+           "Re-Certify (full Day Zero SOP) → Assign to Production Tenant X. No shortcuts are permitted. "
+           "The return path follows the same discipline: Tenant X → Detach → Reimage → Disk Wipe → Recertify → Internal Tenant A.", bold=True, sz=8.5)
 
-    H(doc, "5.2 Reassignment Steps", 2)
+    H(doc, "5.2 Mandatory Reassignment Steps", 2)
     T(doc, ["Step", "Action", "Validation"],
         [
-            ["1. Detach", "Remove tenant label, drain workloads", "No tenant pods running on node"],
-            ["2. Reimage", "Full OS reimage from Packer-built golden image", "Image hash matches catalog; BCM confirms"],
-            ["3. Disk Wipe", "Cryptographic wipe of all local storage", "Wipe verification log; SMART health OK"],
-            ["4. Network Reconfig", "Revert tenant VLAN/routing; apply base network config", "IB ports active; base routing validated"],
-            ["5. Certification", "Full Day Zero SOP in Internal Tenant A", "All L1–L9 certification layers pass"],
-            ["6. Assign", "Attach new tenant label; apply tenant network config", "Tenant routing validated; scheduling enabled"],
+            ["1. Certify in Tenant A", "Node passes all L1–L8 certification layers in Internal Tenant A", "All tests pass → CERTIFIED status"],
+            ["2. Un-assign", "Remove Internal Tenant A label, drain workloads", "No tenant pods running on node"],
+            ["3. Disk Wipe & Reimage", "Full OS reimage + cryptographic wipe of all local storage + network reconfig", "Image hash matches catalog; wipe log verified; IB ports active"],
+            ["4. Re-Certify", "Full Day Zero SOP re-run (all L1–L8 layers)", "All certification layers pass again"],
+            ["5. Assign to Tenant X", "Attach production tenant label; apply tenant network config", "Tenant routing validated; scheduling enabled"],
         ],
         col_widths=[0.8, 2.8, 3.4]
     )
@@ -527,14 +525,14 @@ def main():
             ["L7: System", "System memory", "memtester", "Zero errors"],
             ["L7: System", "CPU stress", "stress-ng --cpu $(nproc)", "Zero failures, no MCEs"],
             ["L7: System", "BMC sensors + PSU", "ipmitool sensor/sdr list", "All in range, all OK"],
-            ["L8: Multi-Node Job", "Sample distributed training job", "mpirun + training script", "Completes, no errors"],
-            ["L8: Multi-Node Job", "Cross-node connectivity", "IB health + NCCL scaling", "Bus BW + algo BW scale"],
-            ["L9: K8s Dummy Job", "Pod scheduling + GPU allocation", "kubectl + sample workload", "Job completes, GPUs visible"],
+            ["L8: Workload", "Sample distributed training job", "mpirun + training script", "Completes, no errors"],
+            ["L8: Workload", "Cross-node connectivity", "IB health + NCCL scaling", "Bus BW + algo BW scale"],
+            ["L8: Workload", "Pod scheduling + GPU allocation", "kubectl + sample workload", "Job completes, GPUs visible"],
         ],
         col_widths=[1.2, 1.8, 2.0, 2.0]
     )
 
-    P(doc, "Day Zero Gate: Node admitted ONLY if ALL layers pass. Output: certification record → node marked CERTIFIED.", bold=True, sz=8.5)
+    P(doc, "Day Zero Gate: Node admitted ONLY if ALL layers (L1–L8) pass. Output: certification record → node marked CERTIFIED.", bold=True, sz=8.5)
 
     H(doc, "6.2 Day Two — Continuous Monitoring", 2)
     T(doc, ["Metric", "Source", "B200 Healthy", "Severity"],
@@ -575,14 +573,14 @@ def main():
            "under a single framework with standardized outputs.")
 
     D(doc, os.path.join(DIAGRAMS_DIR, "04_npd_platform.png"),
-        "Figure 6: NPD as a Platform — Multi-Team Contribution Model", width=Inches(5.5))
+        "Figure 5: NPD as a Platform — Multi-Team Contribution Model", width=Inches(5.5))
 
     T(doc, ["Team", "Owns / Contributes to NPD", "Specific Ask"],
         [
             ["Compute Platform", "Host-side IB & tenant VLAN; GPU/Network Operators; IB SR-IOV/VFs; DCGM integration; GPU health & XID detection; host-level checks",
              "Owns NPD framework, detector development, certification pipeline, state machine controller"],
-            ["Kubernetes", "Kubelet/runtime; node readiness; CNI (Tigera/Calico); nodefs/imagefs pressure",
-             "CNI health probes, node readiness signal fidelity, taint/toleration policy enforcement"],
+            ["Kubernetes", "Kubelet/runtime; node readiness; CNI (Tigera/Calico); image cache management; guardrail: customer vs non-customer services",
+             "CNI health probes, node readiness signal fidelity, taint/toleration policy enforcement, K8s layer guardrails"],
             ["Storage", "Weka probes; VAST probes",
              "Storage health probe integration into NPD; R/W latency signals; capacity alerts"],
             ["OE", "NPD integration support; logs, events, metrics across all AZs",
