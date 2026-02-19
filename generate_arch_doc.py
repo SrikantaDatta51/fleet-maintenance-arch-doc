@@ -418,6 +418,9 @@ def main():
     B(doc, "Other teams (Storage, K8s) cannot self-serve their layer configuration into the base image")
     B(doc, "Re-imaging after tenant transitions requires manual intervention")
 
+    D(doc, os.path.join(DIAGRAMS_DIR, "07_image_pipeline.png"),
+        "Figure 5: Automated Image Pipeline — Packer-Based GitOps Model", width=Inches(6.5))
+
     H(doc, "4.2 Target Architecture", 2)
     T(doc, ["Component", "Details"],
         [
@@ -572,7 +575,7 @@ def main():
            "under a single framework with standardized outputs.")
 
     D(doc, os.path.join(DIAGRAMS_DIR, "04_npd_platform.png"),
-        "Figure 5: NPD as a Platform — Multi-Team Contribution Model", width=Inches(5.5))
+        "Figure 6: NPD as a Platform — Multi-Team Contribution Model", width=Inches(5.5))
 
     T(doc, ["Team", "Owns / Contributes to NPD", "Specific Ask"],
         [
